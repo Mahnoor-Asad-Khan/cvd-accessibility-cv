@@ -33,6 +33,7 @@ def rgb_to_lms(img_rgb_normalized: np.ndarray) -> np.ndarray:
     Returns:
         (H, W, 3) array of LMS values.
     """
+    return img_rgb_normalized @ RGB_TO_LMS.T
     # TODO (Kalon): apply RGB_TO_LMS to every pixel.
     # Hint: img @ matrix.T applies the matrix to the last axis (the RGB triplet)
     # for every pixel in one vectorized operation.
@@ -49,5 +50,6 @@ def lms_to_rgb(img_lms: np.ndarray) -> np.ndarray:
     Returns:
         (H, W, 3) array of RGB values in [0, 1] range (NOT yet clipped/rounded).
     """
+    return img_lms @ LMS_TO_RGB.T
     # TODO (Kalon): same idea as rgb_to_lms, but with LMS_TO_RGB.
     raise NotImplementedError
