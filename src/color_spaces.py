@@ -22,9 +22,7 @@ RGB_TO_LMS = np.array([
 # LMS -> RGB is just the matrix inverse
 LMS_TO_RGB = np.linalg.inv(RGB_TO_LMS)
 
-
-def rgb_to_lms(img_rgb_normalized: np.ndarray) -> np.ndarray:
-    """
+"""
     Convert an image from RGB to LMS space.
 
     Args:
@@ -33,15 +31,14 @@ def rgb_to_lms(img_rgb_normalized: np.ndarray) -> np.ndarray:
     Returns:
         (H, W, 3) array of LMS values.
     """
+
+def rgb_to_lms(img_rgb_normalized: np.ndarray) -> np.ndarray:
+
     return img_rgb_normalized @ RGB_TO_LMS.T
     # TODO (Kalon): apply RGB_TO_LMS to every pixel.
-    # Hint: img @ matrix.T applies the matrix to the last axis (the RGB triplet)
-    # for every pixel in one vectorized operation.
-    raise NotImplementedError
 
 
-def lms_to_rgb(img_lms: np.ndarray) -> np.ndarray:
-    """
+"""
     Convert an image from LMS back to RGB space.
 
     Args:
@@ -50,6 +47,7 @@ def lms_to_rgb(img_lms: np.ndarray) -> np.ndarray:
     Returns:
         (H, W, 3) array of RGB values in [0, 1] range (NOT yet clipped/rounded).
     """
+def lms_to_rgb(img_lms: np.ndarray) -> np.ndarray:
+
     return img_lms @ LMS_TO_RGB.T
     # TODO (Kalon): same idea as rgb_to_lms, but with LMS_TO_RGB.
-    raise NotImplementedError
