@@ -3,3 +3,5 @@ opencv-python
 matplotlib
 jupyter
 torch
+scikit-learn
+scikit-image
