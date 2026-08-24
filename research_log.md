@@ -50,7 +50,44 @@ with quantification and experimental comparison of methods.
   projection and/or proper gamut mapping are noted as future improvements.
 
 ## Phase 3: Accessibility Quantification
-(TBD)
+
+### Dominant Color Extraction: k Selection
+- k=6: overall_score=7.43. Investigated further - dominant colors didn't
+  include green (the plate's number color) at all, despite it being visually
+  present. K-means selects colors by pixel frequency, and the number
+  occupies far fewer pixels than the background, so it was absorbed into
+  background-color clusters rather than forming its own.
+- k=3, k=2: same issue, worse (scores rose to 15.86 and ~32, i.e. *more*
+  "safe," while visual inspection confirmed the CVD-simulated image is
+  clearly inaccessible - orange background and green number both simulate
+  to near-identical green). This is a false negative in the metric, not
+  an actual improvement.
+- k=4-5: green cluster starts appearing. k=4: overall_score=6.92 (still
+  above the ~3 JND danger threshold, worth further checking whether the
+  green-containing pair specifically is the low scorer).
+- Finding: frequency-based dominant color extraction can miss small but
+  semantically critical regions (thin text/figures vs. large background
+  areas) — a known limitation of naive palette extraction, not fixable by
+  k tuning alone since increasing k mainly changes how background colors
+  get subdivided, not whether minority colors get detected.
+
+### Root cause of missed-green issue (refined)
+- Visualized k=4 dominant colors directly against the source image. The
+  "green" the metric found is not the number's true saturated green - it's
+  a blended/averaged color (green mixed with background/edge pixels from
+  anti-aliasing), diluted toward orange. This is why its cvd_diff (6.92)
+  still landed above the ~3 JND danger threshold, despite visual inspection
+  showing the simulated image is clearly inaccessible.
+- Root cause: k-means centroid averaging has no concept of "meaningful
+  object boundary" - a cluster containing partly-number, partly-background
+  edge pixels produces a centroid that's a wash of both, not the true
+  number color. This is distinct from (and more precise than) the earlier
+  "minority pixels underrepresented" framing - the issue isn't just pixel
+  count, it's that mixed/edge pixels corrupt the cluster's centroid color.
+- Implication: naive whole-image k-means is not well-suited to detecting
+  thin, edge-heavy shapes (text, icons) against a background - this is a
+  real, citable limitation of frequency/centroid-based palette extraction
+  for this use case.
 
 ## Phase 4: Correction
 (TBD)
