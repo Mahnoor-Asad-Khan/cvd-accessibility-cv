@@ -21,7 +21,8 @@ with quantification and experimental comparison of methods.
 - Brettel et al. (1997): projects colors onto the dichromat's perceivable
   plane using confusion-line geometry
 - Machado et al. (2009): extends to a severity continuum (0-1), enabling
-  simulation of anomalous trichromacy, not just full dichromacy
+  simulation of anomalous trichromacy, not just full dichromacy (Discussed as context, not implemented — this project only uses the
+  simpler Brettel-style full-severity dichromacy model.)
 - Design decision to note: simplified single-plane projection (implemented
   here) vs. Brettel's full piecewise two-anchor-point version
 
@@ -164,6 +165,10 @@ with quantification and experimental comparison of methods.
   reduced epochs (200 -> 100), and added a best-checkpoint safeguard that
   keeps the lowest-distortion model state seen during training rather than
   the final epoch's state.
+- Also worth noting: U-Net weights are randomly initialized, so results
+  varied run-to-run until a fixed seed (torch.manual_seed(42)) was added.
+  Before that, comparing scores across separate runs/sessions wasn't
+  actually apples-to-apples — a small but real reproducibility lesson.
 
   | Version | Overall Score | Visual Quality |
 |---|---|---|
@@ -171,6 +176,10 @@ with quantification and experimental comparison of methods.
 | Rule-based daltonization | 27.93 | Clean, faithful |
 | U-Net (lam=0.5, 200 epochs) | 39.55 | Severely distorted, checkerboard, oversaturated |
 | U-Net (lam=0.1, 100 epochs) | 16.75 | Mild checkerboard, one localized artifact patch, otherwise closer to original |
+
+Note: even this most visually coherent U-Net run turned out to fail final
+functional verification later (see Phase 5) — looking better to the eye
+didn't mean the actual accessibility problem was solved.
 
 ### Conclusion
 - Rule-based daltonization is the reliable, production-viable correction
@@ -200,6 +209,13 @@ with quantification and experimental comparison of methods.
 ## Phase 5: Final Verification & Comparison
 
 ### Numeric scores aren't enough — verifying "does it actually work"
+Note: these numbers differ slightly from Phase 4's (6.92/27.93/39.55/16.75)
+because Phase 4's experiments ran in a separate exploratory notebook with
+slightly different image resize/config than the final results.ipynb used
+here. Traced this down to inconsistent input state between the two files —
+not a code bug. Lesson: always double check you're comparing runs on the
+literally identical input before trusting the numbers.
+
 Ran a final consistent comparison (same image, same resize, same k=4, U-Net
 with seed=42 and 200 epochs) across all three states: original, rule-based
 daltonization, U-Net correction.
@@ -224,4 +240,12 @@ project that's verified both numerically and visually to solve the
 accessibility problem. U-Net demonstrates the PyTorch pipeline works
 end-to-end (training converges, integrates with the project's own metric
 as a differentiable loss) but does not produce a functionally correct
-result as implemented — a good example of
+result as implemented — a good example of why a numeric proxy needs to be
+checked against what it's actually supposed to represent, not trusted on
+its own.
+
+| Method | Accessibility Score | Verified functional? |
+|---|---|---|
+| Original | 8.96 | — (confirmed inaccessible) |
+| Rule-based daltonization | 29.17 | Yes — number clearly visible post-correction |
+| U-Net (self-supervised) | 31.48 | No — highest score, but number still indistinguishable; metric was gamed |
