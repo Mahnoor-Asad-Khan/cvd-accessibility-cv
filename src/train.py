@@ -77,6 +77,7 @@ def train(image_tensor: torch.Tensor, cvd_matrix: torch.Tensor = PROTANOPIA_MATR
     Returns:
         The trained SmallUNet model.
     """
+    torch.manual_seed(42)
     model = SmallUNet()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     best_distortion = float('inf')

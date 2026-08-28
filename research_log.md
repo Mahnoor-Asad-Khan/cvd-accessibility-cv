@@ -197,5 +197,31 @@ with quantification and experimental comparison of methods.
 - Extend rule-based daltonization and U-Net training to deuteranopia and
   tritanopia (currently protanopia-only).
 
-## Phase 5: Experiments & Comparison
-(TBD)
+## Phase 5: Final Verification & Comparison
+
+### Numeric scores aren't enough — verifying "does it actually work"
+Ran a final consistent comparison (same image, same resize, same k=4, U-Net
+with seed=42 and 200 epochs) across all three states: original, rule-based
+daltonization, U-Net correction.
+
+Final scores: Original = 8.96, Daltonization = 29.17, U-Net = 31.48
+
+U-Net scored highest, so before calling it a win, I did the same visual
+check we did for daltonization earlier: simulate CVD on the corrected
+output and actually look at whether the number is visible. Turns out it's
+not — the number's still stuck in the background, invisible to a protanope,
+despite the higher score. Kind of a letdown, not gonna lie, but also the
+most useful check I did the whole project.
+
+So the score itself was misleading — U-Net's higher number seems to come
+from the artifacts it introduces (the checkerboard/purple-line patterns)
+creating new "dominant colors" that happen to score well pairwise, not
+from actually fixing the real problem. If I'd trusted the number alone,
+I'd have wrongly concluded U-Net was the better method.
+
+**Conclusion:** rule-based daltonization is the only method in this
+project that's verified both numerically and visually to solve the
+accessibility problem. U-Net demonstrates the PyTorch pipeline works
+end-to-end (training converges, integrates with the project's own metric
+as a differentiable loss) but does not produce a functionally correct
+result as implemented — a good example of
