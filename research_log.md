@@ -90,7 +90,112 @@ with quantification and experimental comparison of methods.
   for this use case.
 
 ## Phase 4: Correction
-(TBD)
+
+### Step 1: Rule-Based Daltonization
+- Implemented classic daltonization: simulate CVD in LMS space, compute the
+  error (original_LMS - simulated_LMS), redistribute that error into the
+  cone channels the CVD viewer retains, add correction back to the
+  ORIGINAL (not simulated) LMS, convert back to RGB.
+- Validated on the Ishihara test image (protanopia): accessibility_score
+  improved from 6.92 to 27.93 (~4x), both numerically and via visual
+  inspection (number becomes clearly distinguishable from background under
+  simulated protanopia post-correction).
+- Observed and explained an interesting behavior: correction was
+  concentrated on the orange background (high L-cone/red contribution,
+  therefore high "error") while the green number changed minimally (low
+  L-cone dependence, therefore low error) - correction magnitude scales
+  correctly with how much a color relies on the compromised cone, which is
+  the expected, principled behavior of daltonization.
+- Result: reliable, interpretable, fast. No dependency on the Phase 3
+  k-means pipeline (operates per-pixel, not on extracted palettes) -
+  intentional design choice made after discovering k-means dominant-color
+  extraction's limitations (see Phase 3 notes).
+
+### Step 2: U-Net Learned Correction (PyTorch)
+- Motivation: demonstrate PyTorch / neural network competency for
+  internship applications (many relevant projects list U-Net/ResNet/GAN
+  familiarity as a requirement), while keeping rule-based daltonization as
+  the primary, reliable correction method.
+- Architecture: small U-Net (3 encoder levels: 16->32->64 filters,
+  bottleneck 128, symmetric decoder with skip connections via channel
+  concatenation).
+- Training approach: self-supervised (no labeled "correct" image dataset
+  exists or is practical to create). Loss = distortion_from_original
+  (MSE) - lambda * accessibility_gain, where accessibility_gain uses a
+  differentiable, torch-native port of this project's own simulation math
+  (src/differentiable.py).
+- Two documented simplifications in the training signal, both explicitly
+  chosen for timeline/tractability, not oversights:
+  1. Used a luminance-weighted RGB-space distance instead of full
+     Lab/CIE76 Delta-E (avoids porting Lab's non-linear cube-root
+     conversion to torch). NOT luminance-only/hue-blind like WCAG contrast
+     - still captures per-channel color difference, just less perceptually
+     accurate than true Delta-E. Final evaluation still uses the real,
+     accurate metric (metrics.py).
+  2. Used local (neighboring-pixel) color spread as a differentiable proxy
+     for "distinguishability," rather than the Phase 3 metric's global
+     dominant-color-pair comparison. These are genuinely different
+     signals - flagged as a training/evaluation metric mismatch.
+- Trained on a single image (per-image optimization, not a generalizable
+  model across a dataset) - explicit scope decision given timeline.
+- Result (initial run, lambda=0.5, 200 epochs): training loss decreased
+  and the training-time accessibility_gain metric rose steadily
+  (0.22 -> 2.08), confirming the training loop and differentiable pipeline
+  work correctly end-to-end. However, distortion (MSE from original) rose
+  in parallel rather than staying bounded - a warning sign.
+- Evaluating the trained output against the REAL Phase 3 metric gave
+  overall_score = 39.55 (higher than both the original [6.92] and
+  rule-based daltonization [27.93]) - numerically the "best" result.
+  Visual inspection told a different story: the corrected image showed
+  checkerboard artifacts (a known ConvTranspose2d upsampling issue) and
+  globally distorted, oversaturated color (e.g. dominant colors shifting
+  to magenta/pale-yellow, not present in the original image).
+- Root cause: the local-spread training loss has no notion of "meaningful"
+  vs. "arbitrary" contrast, so the model could inflate the proxy metric by
+  distorting the whole image (maximizing pixel-to-pixel contrast
+  indiscriminately) rather than performing a targeted, faithful color
+  correction. This is a genuine reward-hacking-style failure mode, and it
+  was correctly hypothesized BEFORE training (via a thought experiment
+  about within-object contrast, e.g. leaf shading) and then confirmed via
+  both the diverging distortion metric and visual inspection - a case
+  study in why visual/qualitative validation is necessary even when a
+  numeric proxy looks favorable.
+- Mitigation attempted: reduced accessibility-loss weight (lambda 0.5 -> 0.1),
+  reduced epochs (200 -> 100), and added a best-checkpoint safeguard that
+  keeps the lowest-distortion model state seen during training rather than
+  the final epoch's state.
+
+  | Version | Overall Score | Visual Quality |
+|---|---|---|
+| Original | 6.92 | — |
+| Rule-based daltonization | 27.93 | Clean, faithful |
+| U-Net (lam=0.5, 200 epochs) | 39.55 | Severely distorted, checkerboard, oversaturated |
+| U-Net (lam=0.1, 100 epochs) | 16.75 | Mild checkerboard, one localized artifact patch, otherwise closer to original |
+
+### Conclusion
+- Rule-based daltonization is the reliable, production-viable correction
+  method delivered by this project (validated ~4x accessibility
+  improvement).
+- The U-Net demonstrates a full self-supervised PyTorch pipeline
+  (custom differentiable loss built on this project's own metric code,
+  encoder-decoder architecture with skip connections, training loop with
+  Adam optimization) and genuine, rigorously-diagnosed research findings
+  about its current limitations - but is not currently a viable
+  correction method as implemented.
+
+### Future Work
+- Full Lab/CIE76 Delta-E ported to torch for a more perceptually-accurate
+  training signal.
+- Spatially-aware or region-aware loss (e.g. incorporating the Phase 3
+  dominant-color-pair comparison directly, or a segmentation-aware term)
+  instead of naive local pixel-neighbor spread, to avoid indiscriminate
+  contrast maximization.
+- Upsample+conv instead of ConvTranspose2d to address checkerboard
+  artifacts.
+- Train across a dataset of many images rather than per-image, for a
+  generalizable correction model.
+- Extend rule-based daltonization and U-Net training to deuteranopia and
+  tritanopia (currently protanopia-only).
 
 ## Phase 5: Experiments & Comparison
 (TBD)
